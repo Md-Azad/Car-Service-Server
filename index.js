@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
@@ -21,6 +21,24 @@ const client = new MongoClient(uri, {
   },
 });
 
+const verifyJWT = async(req, res, next) => {
+  const authorization = await req.headers.authorization;
+  console.log("full auth",authorization);
+  const restToken = authorization.split(" ")[1];
+  console.log("token after split",restToken);
+  if (!restToken) {
+    return res.status(401).send({ error: true, message: "unauthorization access" });
+  }
+  
+  jwt.verify(restToken, process.env.ACCESS_TOKEN, (err, decoded)=>{
+    if(err){
+      return res.status(403).send({error: true, message: 'Unauthorized Access'})
+    }
+    req.decoded = decoded;
+    next();
+  })
+};
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -29,13 +47,14 @@ async function run() {
     const bookingCollection = client.db("CarService").collection("bookings");
 
     // JWT
-    app.post("/token",(req,res)=>{
-     
+    app.post("/token", (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user,process.env.ACCESS_TOKEN,{expiresIn:'1h'})
-      
-      res.send({token});
-    })
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
+        expiresIn: "1h",
+      });
+
+      res.send({ token });
+    });
 
     // SERVICES APIS
     app.get("/services", async (req, res) => {
@@ -55,9 +74,16 @@ async function run() {
     });
 
     // booking related api
-    app.get("/booking", async (req, res) => {
+    app.get("/booking",verifyJWT,  async (req, res) => {
+      const decoded = req.decoded;
+      console.log(decoded.loggedUser);
+      if(decoded.loggedUser !== req.query.email){
+        return res.status(403).send({error: true, message: 'access forbiden'})
+      }
+      console.log("comeback after verify jwt");
+      
       let query = {};
-      console.log(req.query.email);
+      
       if (req.query?.email) {
         query = { email: req.query.email };
       }
@@ -68,7 +94,6 @@ async function run() {
 
     app.post("/booking", async (req, res) => {
       const booking = req.body;
-      // console.log(booking);
       const result = await bookingCollection.insertOne(booking);
       res.send(result);
     });
