@@ -25,7 +25,8 @@ const verifyJWT = async(req, res, next) => {
   const authorization = await req.headers.authorization;
   console.log("full auth",authorization);
   const restToken = authorization.split(" ")[1];
-  console.log("token after split",restToken);
+
+  console.log("token after split:",restToken);
   if (!restToken) {
     return res.status(401).send({ error: true, message: "unauthorization access" });
   }
@@ -52,8 +53,8 @@ async function run() {
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
         expiresIn: "1h",
       });
-
-      res.send({ token });
+      console.log("token: ",token);
+      res.send( {token });
     });
 
     // SERVICES APIS
@@ -62,6 +63,9 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+    app.get('/test',(req,res)=>{
+      res.send({name:"testing the data"})
+    })
 
     app.get("/services/:id", async (req, res) => {
       const id = req.params.id;
@@ -74,10 +78,10 @@ async function run() {
     });
 
     // booking related api
-    app.get("/booking",verifyJWT,  async (req, res) => {
+    app.get("/booking", verifyJWT, async (req, res) => {
       const decoded = req.decoded;
-      console.log(decoded.loggedUser);
-      if(decoded.loggedUser !== req.query.email){
+     
+      if(decoded.loggedUser.email !== req.query.email){
         return res.status(403).send({error: true, message: 'access forbiden'})
       }
       console.log("comeback after verify jwt");
@@ -95,7 +99,7 @@ async function run() {
     app.post("/booking", async (req, res) => {
       const booking = req.body;
       const result = await bookingCollection.insertOne(booking);
-      res.send(result);
+      res.send({result});
     });
 
     app.patch("/booking/:id", async (req, res) => {
