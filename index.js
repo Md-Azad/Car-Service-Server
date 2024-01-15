@@ -21,23 +21,27 @@ const client = new MongoClient(uri, {
   },
 });
 
-const verifyJWT = async(req, res, next) => {
+const verifyJWT = async (req, res, next) => {
   const authorization = await req.headers.authorization;
-  console.log("full auth",authorization);
+  console.log("full auth", authorization);
   const restToken = authorization.split(" ")[1];
 
-  console.log("token after split:",restToken);
+  console.log("token after split:", restToken);
   if (!restToken) {
-    return res.status(401).send({ error: true, message: "unauthorization access" });
+    return res
+      .status(401)
+      .send({ error: true, message: "unauthorization access" });
   }
-  
-  jwt.verify(restToken, process.env.ACCESS_TOKEN, (err, decoded)=>{
-    if(err){
-      return res.status(403).send({error: true, message: 'Unauthorized Access'})
+
+  jwt.verify(restToken, process.env.ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      return res
+        .status(403)
+        .send({ error: true, message: "Unauthorized Access" });
     }
     req.decoded = decoded;
     next();
-  })
+  });
 };
 
 async function run() {
@@ -53,20 +57,16 @@ async function run() {
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
         expiresIn: "1h",
       });
-      console.log("token: ",token);
-      res.send( {token });
+      console.log("token: ", token);
+      res.send({ token });
     });
 
     // SERVICES APIS
     app.get("/services", async (req, res) => {
       const cursor = serviceCollection.find();
       const result = await cursor.toArray();
-     res.json(result)
-      // res.send(result);
+      res.send(result);
     });
-    app.get('/test',(req,res)=>{
-      res.send({name:"testing the data"})
-    })
 
     app.get("/services/:id", async (req, res) => {
       const id = req.params.id;
@@ -81,14 +81,16 @@ async function run() {
     // booking related api
     app.get("/booking", verifyJWT, async (req, res) => {
       const decoded = req.decoded;
-     
-      if(decoded.loggedUser.email !== req.query.email){
-        return res.status(403).send({error: true, message: 'access forbiden'})
+
+      if (decoded.loggedUser.email !== req.query.email) {
+        return res
+          .status(403)
+          .send({ error: true, message: "access forbiden" });
       }
       console.log("comeback after verify jwt");
-      
+
       let query = {};
-      
+
       if (req.query?.email) {
         query = { email: req.query.email };
       }
@@ -100,7 +102,7 @@ async function run() {
     app.post("/booking", async (req, res) => {
       const booking = req.body;
       const result = await bookingCollection.insertOne(booking);
-      res.send({result});
+      res.send({ result });
     });
 
     app.patch("/booking/:id", async (req, res) => {
